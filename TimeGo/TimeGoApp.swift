@@ -6,23 +6,19 @@ import UserNotifications
 struct TimeGoApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var store: SessionStore
-    @StateObject private var network: NetworkMonitor
     @StateObject private var runtime: AppRuntime
 
     init() {
         let store = SessionStore()
-        let network = NetworkMonitor()
         let wake = WakeMonitor()
         _store = StateObject(wrappedValue: store)
-        _network = StateObject(wrappedValue: network)
-        _runtime = StateObject(wrappedValue: AppRuntime(store: store, network: network, wake: wake))
+        _runtime = StateObject(wrappedValue: AppRuntime(store: store, wake: wake))
     }
 
     var body: some Scene {
         MenuBarExtra {
             MenuBarView()
                 .environmentObject(store)
-                .environmentObject(network)
                 .environmentObject(L10n.shared)
         } label: {
             MenuBarLabel()
@@ -36,20 +32,19 @@ struct TimeGoApp: App {
 @MainActor
 final class AppRuntime: ObservableObject {
     private let store: SessionStore
-    private let network: NetworkMonitor
     private let wake: WakeMonitor
-    private var autoService: AutoClockInService?
+    private var notificationTask: Task<Void, Never>?
+    /// Blocks session-publisher resync while markNotified* is writing flags.
+    private var isMutatingNotifyFlags = false
 
-    init(store: SessionStore, network: NetworkMonitor, wake: WakeMonitor) {
+    init(store: SessionStore, wake: WakeMonitor) {
         self.store = store
-        self.network = network
         self.wake = wake
         Task { await self.start() }
     }
 
     private func start() async {
-        guard autoService == nil else { return }
-        SettingsPanelController.shared.configure(store: store, network: network)
+        SettingsPanelController.shared.configure(store: store)
         L10n.shared.apply(store.settings.language)
 
         // Install a stable ~/Applications copy first, then repair login items that may
@@ -60,9 +55,135 @@ final class AppRuntime: ObservableObject {
 
         // Refresh status only; permission prompts are requested from the settings window.
         await NotificationService.shared.refreshAuthorizationStatus()
-        let service = AutoClockInService(store: store, network: network, wake: wake)
-        autoService = service
-        service.start()
+
+        // Auto clock-in on wake/unlock (office computer never leaves the office)
+        wake.onEvent = { [weak self] event in
+            self?.store.ensureDayBoundaryTimer()
+            self?.handlePresence(event)
+            self?.checkMissedNotifications()
+        }
+        wake.start()
+
+        // Resync notifications when session changes
+        NotificationService.shared.onWorkNotificationDelivered = { [weak self] id in
+            self?.handleSystemDelivered(id)
+        }
+
+        scheduleResyncNotifications()
+        checkMissedNotifications()
+    }
+
+    private func handlePresence(_ event: PresenceEvent) {
+        guard !store.hasSessionToday else { return }
+        let source: ClockInSource = (event == .wake) ? .wake : .unlock
+        store.start(source: source)
+        scheduleResyncNotifications()
+    }
+
+    private func handleSystemDelivered(_ identifier: String) {
+        isMutatingNotifyFlags = true
+        defer { isMutatingNotifyFlags = false }
+
+        switch identifier {
+        case NotificationService.earlyID:
+            if store.session?.notifiedEarly != true {
+                store.markNotifiedEarly()
+            }
+        case NotificationService.targetID:
+            if store.session?.notifiedAtTarget != true {
+                store.markNotifiedAtTarget()
+            }
+        default:
+            break
+        }
+    }
+
+    private func scheduleResyncNotifications() {
+        notificationTask?.cancel()
+        notificationTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 50_000_000)
+            guard !Task.isCancelled else { return }
+            self.performResyncNotifications()
+        }
+    }
+
+    private func performResyncNotifications() {
+        let settings = store.settings
+        let notifications = NotificationService.shared
+
+        guard settings.notificationsEnabled,
+              let leave = store.targetLeaveTime,
+              store.hasSessionToday else {
+            notifications.cancelPending()
+            return
+        }
+
+        let wantTarget = settings.notifyWhenDone && store.session?.notifiedAtTarget != true
+        let wantEarly = settings.notifyEarlyReminder
+            && store.session?.notifiedEarly != true
+            && store.session?.notifiedAtTarget != true
+
+        notifications.cancelPending()
+
+        if wantTarget, leave > .now {
+            notifications.scheduleTargetNotification(
+                at: leave,
+                workHours: settings.workHours,
+                lunchHours: settings.lunchHours
+            )
+        }
+        if wantEarly {
+            let minutes = settings.clampedEarlyReminderMinutes
+            let earlyAt = leave.addingTimeInterval(TimeInterval(-minutes * 60))
+            if earlyAt > .now {
+                notifications.scheduleEarlyNotification(
+                    at: earlyAt,
+                    leaveTime: leave,
+                    minutes: minutes
+                )
+            }
+        }
+
+        checkMissedNotifications()
+    }
+
+    private func checkMissedNotifications() {
+        let settings = store.settings
+        guard settings.notificationsEnabled else { return }
+        guard store.hasSessionToday else { return }
+        guard let leave = store.targetLeaveTime else { return }
+
+        let notifications = NotificationService.shared
+        let grace: TimeInterval = 3
+        let now = Date()
+
+        if settings.notifyEarlyReminder,
+           store.session?.notifiedEarly != true,
+           store.session?.notifiedAtTarget != true {
+            let minutes = settings.clampedEarlyReminderMinutes
+            let earlyAt = leave.addingTimeInterval(TimeInterval(-minutes * 60))
+            if now >= earlyAt.addingTimeInterval(grace) {
+                isMutatingNotifyFlags = true
+                store.markNotifiedEarly()
+                isMutatingNotifyFlags = false
+                notifications.cancelEarlyPending()
+                notifications.notifyEarlyReminder(leaveTime: leave, minutes: minutes)
+            }
+        }
+
+        if settings.notifyWhenDone,
+           store.session?.notifiedAtTarget != true,
+           now >= leave.addingTimeInterval(grace) {
+            isMutatingNotifyFlags = true
+            store.markNotifiedAtTarget()
+            isMutatingNotifyFlags = false
+            notifications.cancelPending()
+            notifications.notifyTargetReached(
+                leaveTime: leave,
+                workHours: settings.workHours,
+                lunchHours: settings.lunchHours
+            )
+        }
     }
 }
 

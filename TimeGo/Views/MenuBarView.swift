@@ -42,7 +42,6 @@ struct MenuBarLabel: View {
 
 struct MenuBarView: View {
     @EnvironmentObject private var store: SessionStore
-    @EnvironmentObject private var network: NetworkMonitor
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var liveClock = PanelLiveClock.shared
     @State private var draftStart = Date()
@@ -73,9 +72,6 @@ struct MenuBarView: View {
 
             SoftDivider()
                 .padding(.bottom, 12)
-
-            networkHint
-                .padding(.bottom, 14)
 
             footer
         }
@@ -341,41 +337,6 @@ struct MenuBarView: View {
         }
     }
 
-    private var networkHint: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            SectionLabel(title: l10n.t("menu.network"))
-            HStack(spacing: 8) {
-                Image(systemName: network.matchesCompanyNetwork(settings: store.settings) ? "wifi" : "wifi.exclamationmark")
-                    .foregroundStyle(
-                        network.matchesCompanyNetwork(settings: store.settings)
-                        ? TimeGoTheme.accent
-                        : TimeGoTheme.secondary
-                    )
-                Text(networkSummary)
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(TimeGoTheme.secondary)
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            if !network.matchesCompanyNetwork(settings: store.settings),
-               let reason = network.snapshot.ssidUnavailableReason {
-                Text(reason)
-                    .font(.system(.caption2, design: .rounded))
-                    .foregroundStyle(TimeGoTheme.overtime)
-            }
-        }
-    }
-
-    private var networkSummary: String {
-        let link = network.snapshot.wifiActive ? l10n.t("net.wifiOn") : l10n.t("net.wifiOff")
-        let ssid = network.snapshot.ssid ?? l10n.t("net.unknownName")
-        let ip = network.snapshot.localIPv4s.first ?? l10n.t("net.noIP")
-        let match = network.matchesCompanyNetwork(settings: store.settings)
-            ? l10n.t("net.matched")
-            : l10n.t("net.unmatched")
-        return l10n.t("net.summaryLine", link, ssid, ip, match)
-    }
-
     private var footer: some View {
         HStack {
             Button(l10n.t("common.settings")) {
@@ -413,7 +374,6 @@ struct MenuBarView: View {
         case .manual: sourceText = l10n.t("menu.source.manual")
         case .unlock: sourceText = l10n.t("menu.source.unlock")
         case .wake: sourceText = l10n.t("menu.source.wake")
-        case .network: sourceText = l10n.t("menu.source.network")
         case .none: sourceText = ""
         }
         return l10n.t("menu.statusActive", sourceText)

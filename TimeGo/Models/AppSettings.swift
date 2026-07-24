@@ -5,18 +5,12 @@ struct AppSettings: Codable, Equatable {
     var workHours: Double = 8
     /// Lunch break duration in hours (default 1). Added on top of work hours for leave time.
     var lunchHours: Double = 1
-    /// Company Wi-Fi SSIDs used for auto clock-in.
-    var companySSIDs: [String] = []
-    /// Local IP prefixes, e.g. "10.8.", "192.168.10."
-    var companyIPPrefixes: [String] = []
     /// Notify when the target work duration is reached.
     var notifyWhenDone: Bool = true
     /// Notify a few minutes before leave time.
     var notifyEarlyReminder: Bool = true
     /// Minutes before leave time for the early reminder (default 5).
     var earlyReminderMinutes: Int = 5
-    /// If true and network rules are configured, unlock/wake only clocks in while on company network.
-    var requireCompanyNetworkForWake: Bool = true
     /// Launch TimeGo automatically when you log in to macOS.
     var launchAtLogin: Bool = true
     /// UI language. Defaults to following the Mac system language.
@@ -35,10 +29,6 @@ struct AppSettings: Codable, Equatable {
     /// Wall-clock time from start until you can leave: work + lunch.
     var requiredOnSiteDuration: TimeInterval {
         workDuration + lunchDuration
-    }
-
-    var hasNetworkRules: Bool {
-        !companySSIDs.isEmpty || !companyIPPrefixes.isEmpty
     }
 
     /// Early reminder minutes clamped to a sensible range.
@@ -60,24 +50,18 @@ struct AppSettings: Codable, Equatable {
     init(
         workHours: Double = 8,
         lunchHours: Double = 1,
-        companySSIDs: [String] = [],
-        companyIPPrefixes: [String] = [],
         notifyWhenDone: Bool = true,
         notifyEarlyReminder: Bool = true,
         earlyReminderMinutes: Int = 5,
-        requireCompanyNetworkForWake: Bool = true,
         launchAtLogin: Bool = true,
         language: AppLanguagePreference = .system,
         companyOAURL: String = "https://i.mdpi.cn/team/attendance"
     ) {
         self.workHours = workHours
         self.lunchHours = lunchHours
-        self.companySSIDs = companySSIDs
-        self.companyIPPrefixes = companyIPPrefixes
         self.notifyWhenDone = notifyWhenDone
         self.notifyEarlyReminder = notifyEarlyReminder
         self.earlyReminderMinutes = earlyReminderMinutes
-        self.requireCompanyNetworkForWake = requireCompanyNetworkForWake
         self.launchAtLogin = launchAtLogin
         self.language = language
         self.companyOAURL = companyOAURL
@@ -87,12 +71,9 @@ struct AppSettings: Codable, Equatable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         workHours = try c.decodeIfPresent(Double.self, forKey: .workHours) ?? 8
         lunchHours = try c.decodeIfPresent(Double.self, forKey: .lunchHours) ?? 1
-        companySSIDs = try c.decodeIfPresent([String].self, forKey: .companySSIDs) ?? []
-        companyIPPrefixes = try c.decodeIfPresent([String].self, forKey: .companyIPPrefixes) ?? []
         notifyWhenDone = try c.decodeIfPresent(Bool.self, forKey: .notifyWhenDone) ?? true
         notifyEarlyReminder = try c.decodeIfPresent(Bool.self, forKey: .notifyEarlyReminder) ?? true
         earlyReminderMinutes = try c.decodeIfPresent(Int.self, forKey: .earlyReminderMinutes) ?? 5
-        requireCompanyNetworkForWake = try c.decodeIfPresent(Bool.self, forKey: .requireCompanyNetworkForWake) ?? true
         // Existing installs: turn on by default when the key is missing.
         launchAtLogin = try c.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? true
         language = try c.decodeIfPresent(AppLanguagePreference.self, forKey: .language) ?? .system
@@ -120,7 +101,6 @@ enum ClockInSource: String, Codable {
     case manual
     case unlock
     case wake
-    case network
 }
 
 struct WorkSession: Codable, Equatable {
