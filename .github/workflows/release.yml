@@ -31,10 +31,7 @@ jobs:
         id: version
         run: |
           VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' TimeGo/Info.plist)
-          BUILD=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' TimeGo/Info.plist)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "build=$BUILD" >> $GITHUB_OUTPUT
-          echo "zip_name=TimeGo-${VERSION}-b${BUILD}.zip" >> $GITHUB_OUTPUT
 
       - name: Release latest (main branch)
         if: github.ref == 'refs/heads/main'
@@ -44,11 +41,13 @@ jobs:
           name: "TimeGo Latest"
           body: |
             Automated build from main branch.
-            Version: ${{ steps.version.outputs.version }} (${{ steps.version.outputs.build }})
+            Version: ${{ steps.version.outputs.version }}
             Commit: ${{ github.sha }}
           files: dist/*.zip
           prerelease: false
           make_latest: true
+          overwrite_body: true
+          overwrite_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -59,7 +58,7 @@ jobs:
           name: "TimeGo ${{ github.ref_name }}"
           body: |
             Release ${{ github.ref_name }}.
-            Version: ${{ steps.version.outputs.version }} (${{ steps.version.outputs.build }})
+            Version: ${{ steps.version.outputs.version }}
           files: dist/*.zip
           prerelease: false
           make_latest: true
