@@ -28,6 +28,11 @@ jobs:
           VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' TimeGo/Info.plist)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+      - name: Prepare latest asset
+        if: github.ref == 'refs/heads/main'
+        run: |
+          cp dist/TimeGo-*.zip dist/TimeGo.zip
+
       - name: Release latest (main branch)
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v3
@@ -38,7 +43,7 @@ jobs:
             Automated build from main branch.
             Version: ${{ steps.version.outputs.version }}
             Commit: ${{ github.sha }}
-          files: dist/*.zip
+          files: dist/TimeGo.zip
           prerelease: false
           make_latest: true
           overwrite_body: true
@@ -54,7 +59,7 @@ jobs:
           body: |
             Release ${{ github.ref_name }}.
             Version: ${{ steps.version.outputs.version }}
-          files: dist/*.zip
+          files: dist/TimeGo-*.zip
           prerelease: false
           make_latest: true
         env:
