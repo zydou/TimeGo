@@ -74,6 +74,7 @@ Simple wake/unlock-based auto clock-in:
 - Localization keys live in the zh/en tables in `Localization.swift`; add to both tables for any new string.
 - Commit messages are in Chinese.
 - `scripts/` contains the release packager — not part of the Xcode target.
+- **Commit message pitfall**: Do NOT use `git commit -m "$(cat <<'EOF' ... EOF)"` — the `EOF` delimiter and `)` can leak into the commit message when executed via Claude Code's Bash tool. This is a known issue with how the tool processes heredocs, not related to shell configuration. Use a plain string with `-m "..."` instead.
 
 ### Swift concurrency (Xcode 15.4+)
 
