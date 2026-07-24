@@ -6,6 +6,11 @@ on:
       - main
     tags:
       - 'v*'
+    paths-ignore:
+      - '**.md'
+      - '.github/**'
+      - 'LICENSE'
+      - '.gitignore'
 
 jobs:
   build-and-release:
