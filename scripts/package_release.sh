@@ -10,21 +10,22 @@ SCHEME="TimeGo"
 PROJECT="TimeGo.xcodeproj"
 DERIVED="${ROOT}/build/release"
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' TimeGo/Info.plist 2>/dev/null || echo "1.0.0")"
-BUILD="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' TimeGo/Info.plist 2>/dev/null || echo "1")"
 OUT_DIR="${ROOT}/dist"
-ZIP_NAME="TimeGo-${VERSION}-b${BUILD}.zip"
+ZIP_NAME="TimeGo-${VERSION}.zip"
 
 echo "==> Cleaning ${DERIVED}"
 rm -rf "${DERIVED}"
 mkdir -p "${OUT_DIR}"
 
-echo "==> Building ${SCHEME} (${CONFIGURATION})"
+echo "==> Building ${SCHEME} (${CONFIGURATION}) — Universal (Apple Silicon + Intel)"
 xcodebuild \
   -project "${PROJECT}" \
   -scheme "${SCHEME}" \
   -configuration "${CONFIGURATION}" \
   -derivedDataPath "${DERIVED}" \
   -destination "platform=macOS" \
+  ARCHS="arm64 x86_64" \
+  ONLY_ACTIVE_ARCH=NO \
   CODE_SIGN_IDENTITY="-" \
   CODE_SIGNING_ALLOWED=YES \
   CODE_SIGNING_REQUIRED=NO \
