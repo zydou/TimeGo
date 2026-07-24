@@ -20,8 +20,8 @@ final class WakeMonitor {
                 forName: NSWorkspace.didWakeNotification,
                 object: nil,
                 queue: .main
-            ) { [weak self] _ in
-                Task { @MainActor in
+            ) { _ in
+                Task { @MainActor [weak self] in
                     self?.onEvent?(.wake)
                 }
             }
@@ -32,8 +32,8 @@ final class WakeMonitor {
                 forName: Notification.Name("com.apple.screenIsUnlocked"),
                 object: nil,
                 queue: .main
-            ) { [weak self] _ in
-                Task { @MainActor in
+            ) { _ in
+                Task { @MainActor [weak self] in
                     self?.onEvent?(.unlock)
                 }
             }

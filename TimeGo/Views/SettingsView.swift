@@ -97,7 +97,7 @@ struct SettingsView: View {
                     .font(.system(.subheadline, design: .rounded))
             }
             .tint(TimeGoTheme.accent)
-            .onChange(of: launchAtLoginEnabled) { _, enabled in
+            .onChange(of: launchAtLoginEnabled) { enabled in
                 applyLaunchAtLogin(enabled)
             }
 
@@ -145,7 +145,7 @@ struct SettingsView: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            .onChange(of: language) { _, newValue in
+            .onChange(of: language) { newValue in
                 applyLanguage(newValue)
             }
         }
@@ -203,7 +203,7 @@ struct SettingsView: View {
                     .font(.system(.subheadline, design: .rounded))
             }
             .tint(TimeGoTheme.accent)
-            .onChange(of: notifyWhenDone) { _, enabled in
+            .onChange(of: notifyWhenDone) { enabled in
                 if enabled { Task { await requestNotifications() } }
             }
 
@@ -214,7 +214,7 @@ struct SettingsView: View {
                     .font(.system(.subheadline, design: .rounded))
             }
             .tint(TimeGoTheme.accent)
-            .onChange(of: notifyEarlyReminder) { _, enabled in
+            .onChange(of: notifyEarlyReminder) { enabled in
                 if enabled { Task { await requestNotifications() } }
             }
 

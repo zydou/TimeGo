@@ -19,7 +19,7 @@ enum AppLanguagePreference: String, Codable, CaseIterable, Identifiable {
 
 final class L10n: ObservableObject {
     // UI singleton; always read/written on the main actor in practice.
-    nonisolated(unsafe) static let shared = L10n()
+    static let shared = L10n()
 
     @Published private(set) var preference: AppLanguagePreference = .system
     /// Effective language code used for lookups: `zh-Hans` or `en`.

@@ -11,7 +11,7 @@ struct NetworkSnapshot: Equatable {
 }
 
 @MainActor
-final class NetworkMonitor: ObservableObject {
+final class NetworkMonitor: ObservableObject, @unchecked Sendable {
     @Published private(set) var snapshot = NetworkSnapshot(
         ssid: nil,
         localIPv4s: [],
@@ -30,8 +30,8 @@ final class NetworkMonitor: ObservableObject {
         }
         LocationAuthService.shared.refresh()
 
-        monitor.pathUpdateHandler = { [weak self] path in
-            Task { @MainActor in
+        monitor.pathUpdateHandler = { path in
+            Task { @MainActor [weak self] in
                 self?.latestPath = path
                 self?.refresh(path: path)
             }
@@ -42,8 +42,8 @@ final class NetworkMonitor: ObservableObject {
 
         // Path updates cover most changes; rare polling catches SSID/IP drift only.
         refreshTimer?.invalidate()
-        let timer = Timer(timeInterval: 300, repeats: true) { [weak self] _ in
-            Task { @MainActor in
+        let timer = Timer(timeInterval: 300, repeats: true) { _ in
+            Task { @MainActor [weak self] in
                 self?.refreshNow()
             }
         }

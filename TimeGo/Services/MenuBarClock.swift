@@ -26,8 +26,8 @@ final class MenuBarClock: ObservableObject {
         ) ?? Date().addingTimeInterval(60)
         let delay = min(60, max(2, nextMinute.timeIntervalSinceNow + 0.15))
 
-        let timer = Timer(timeInterval: delay, repeats: false) { [weak self] _ in
-            Task { @MainActor in
+        let timer = Timer(timeInterval: delay, repeats: false) { _ in
+            Task { @MainActor [weak self] in
                 self?.fireAndReschedule()
             }
         }
@@ -50,8 +50,8 @@ final class PanelLiveClock: ObservableObject {
         retainCount += 1
         guard timer == nil else { return }
         now = Date()
-        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
-            Task { @MainActor in
+        let timer = Timer(timeInterval: 1, repeats: true) { _ in
+            Task { @MainActor [weak self] in
                 self?.now = Date()
             }
         }

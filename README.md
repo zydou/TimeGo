@@ -4,7 +4,7 @@ macOS 菜单栏弹性工时助手：到公司后自动开始计时，到点提�
 
 适合「几点到都行，但干满目标工时再走」的弹性上下班。默认按 **8 小时工时 + 1 小时午休** 计算建议下班时间，可在设置里修改。
 
-**需要 macOS 14 或更高版本。**
+**需要 macOS 13 或更高版本。**
 
 
 <img width="200" height="100%" alt="CleanShot 2026-07-22 at 16 29 29@2x" src="https://github.com/user-attachments/assets/b8391fc4-bf58-4e30-9a1c-463e3c6a3c5e" />

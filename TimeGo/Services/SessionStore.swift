@@ -1,7 +1,7 @@
 import Foundation
 
 @MainActor
-final class SessionStore: ObservableObject {
+final class SessionStore: ObservableObject, @unchecked Sendable {
     @Published private(set) var settings: AppSettings
     @Published private(set) var session: WorkSession?
 
@@ -144,8 +144,8 @@ final class SessionStore: ObservableObject {
             matchingPolicy: .nextTime
         ) else { return }
         let delay = max(5, next.timeIntervalSinceNow)
-        let timer = Timer(timeInterval: delay, repeats: false) { [weak self] _ in
-            Task { @MainActor in
+        let timer = Timer(timeInterval: delay, repeats: false) { _ in
+            Task { @MainActor [weak self] in
                 self?.reconcileDayBoundary()
                 self?.scheduleNextDayBoundary()
             }

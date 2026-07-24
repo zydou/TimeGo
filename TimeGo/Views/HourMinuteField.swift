@@ -11,6 +11,7 @@ struct HourMinuteField: View {
     @State private var minuteText = ""
     @State private var isPushing = false
     @FocusState private var focused: Field?
+    @State private var lastFocused: Field?
 
     private enum Field: Hashable {
         case hour
@@ -50,7 +51,7 @@ struct HourMinuteField: View {
                 NSApp.keyWindow?.makeFirstResponder(nil)
             }
         }
-        .onChange(of: date) { _, _ in
+        .onChange(of: date) { _ in
             guard !isPushing else { return }
             pullFromDate()
         }
@@ -64,7 +65,7 @@ struct HourMinuteField: View {
                 .foregroundStyle(TimeGoTheme.secondary)
             digitField(text: $minuteText, field: .minute)
         }
-        .onChange(of: hourText) { _, newValue in
+        .onChange(of: hourText) { newValue in
             let cleaned = Self.sanitize(newValue, max: 23)
             if cleaned != newValue {
                 hourText = cleaned
@@ -75,7 +76,7 @@ struct HourMinuteField: View {
                 focused = .minute
             }
         }
-        .onChange(of: minuteText) { _, newValue in
+        .onChange(of: minuteText) { newValue in
             let cleaned = Self.sanitize(newValue, max: 59)
             if cleaned != newValue {
                 minuteText = cleaned
@@ -85,12 +86,12 @@ struct HourMinuteField: View {
                 pushToDate()
             }
         }
-        .onChange(of: focused) { old, new in
-            if old == .hour, new != .hour {
+        .onChange(of: focused) { new in
+            if lastFocused == .hour, new != .hour {
                 normalizeHourText()
                 pushToDate()
             }
-            if old == .minute, new != .minute {
+            if lastFocused == .minute, new != .minute {
                 normalizeMinuteText()
                 pushToDate()
             }
@@ -101,6 +102,7 @@ struct HourMinuteField: View {
                     }
                 }
             }
+            lastFocused = new
         }
         .onExitCommand {
             endEditing()
@@ -136,14 +138,6 @@ struct HourMinuteField: View {
             .padding(.vertical, 4)
             .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
             .focused($focused, equals: field)
-            .onKeyPress(.upArrow) {
-                nudge(field, by: 1)
-                return .handled
-            }
-            .onKeyPress(.downArrow) {
-                nudge(field, by: -1)
-                return .handled
-            }
             .onSubmit {
                 if field == .hour {
                     normalizeHourText()

@@ -96,7 +96,7 @@ struct MenuBarView: View {
         .onDisappear {
             PanelLiveClock.shared.release()
         }
-        .onChange(of: store.startTime) { _, newValue in
+        .onChange(of: store.startTime) { newValue in
             guard let newValue else { return }
             syncDraft(newValue)
         }
@@ -301,7 +301,7 @@ struct MenuBarView: View {
                         .foregroundStyle(TimeGoTheme.secondary)
                     Spacer()
                     HourMinuteField(date: $draftStart)
-                        .onChange(of: draftStart) { _, newValue in
+                        .onChange(of: draftStart) { newValue in
                             guard !ignoreDraftChange else { return }
                             store.setStartTime(mergedToday(newValue), asManualSource: true)
                         }
