@@ -2,28 +2,22 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var store: SessionStore
-    @EnvironmentObject private var network: NetworkMonitor
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var notifications = NotificationService.shared
-    @ObservedObject private var location = LocationAuthService.shared
     @ObservedObject private var launchAtLogin = LaunchAtLoginService.shared
 
     var onClose: (() -> Void)?
 
     @State private var workHours: Double = 8
     @State private var lunchHours: Double = 1
-    @State private var ssidText: String = ""
-    @State private var ipText: String = ""
     @State private var notifyWhenDone = true
     @State private var notifyEarlyReminder = true
     @State private var earlyReminderMinutes: Int = 5
-    @State private var requireCompanyNetworkForWake = true
     @State private var launchAtLoginEnabled = true
     @State private var language: AppLanguagePreference = .system
     @State private var oaURLText: String = ""
     @State private var savedFlash = false
     @State private var isRequestingNotify = false
-    @State private var isRequestingLocation = false
 
     var body: some View {
         ZStack {
@@ -45,7 +39,6 @@ struct SettingsView: View {
                         oaSection
                         hoursSection
                         notifySection
-                        networkSection
                     }
                     .padding(22)
                 }
@@ -56,12 +49,10 @@ struct SettingsView: View {
                     .padding(16)
             }
         }
-        .frame(width: 400, height: 720)
+        .frame(width: 400, height: 600)
         .id(l10n.code)
         .onAppear {
             load()
-            location.refresh()
-            network.refreshNow()
             launchAtLogin.refresh()
             Task { await notifications.refreshAuthorizationStatus() }
         }
@@ -249,89 +240,6 @@ struct SettingsView: View {
         }
     }
 
-    private var networkSection: some View {
-        settingsBlock(title: l10n.t("settings.network"), subtitle: l10n.t("settings.networkSubtitle")) {
-            Toggle(isOn: $requireCompanyNetworkForWake) {
-                Text(l10n.t("settings.requireCompanyNet"))
-                    .font(.system(.subheadline, design: .rounded))
-            }
-            .tint(TimeGoTheme.accent)
-
-            PermissionBadge(
-                title: l10n.t("location.badge", location.authState.title),
-                color: locationStatusColor
-            )
-
-            if !location.authState.isGranted {
-                Button(
-                    location.authState == .denied || location.authState == .restricted || !location.systemLocationEnabled
-                    ? l10n.t("location.openSettings")
-                    : l10n.t("location.allow")
-                ) {
-                    Task { await requestLocation() }
-                }
-                .buttonStyle(PrimaryButtonStyle())
-                .disabled(isRequestingLocation)
-            }
-
-            if let reason = network.snapshot.ssidUnavailableReason, network.snapshot.ssid == nil {
-                Text(reason)
-                    .font(.system(.caption2, design: .rounded))
-                    .foregroundStyle(TimeGoTheme.overtime)
-            }
-
-            Text(l10n.t("settings.networkHint"))
-                .font(.system(.caption2, design: .rounded))
-                .foregroundStyle(TimeGoTheme.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            labeledField(
-                title: l10n.t("settings.ssid"),
-                placeholder: l10n.t("settings.ssidPlaceholder"),
-                text: $ssidText
-            ) {
-                Button(l10n.t("settings.fillSSID")) {
-                    if let ssid = network.snapshot.ssid, !ssid.isEmpty {
-                        ssidText = mergeUnique(ssidText, adding: ssid)
-                    }
-                }
-                .buttonStyle(GhostButtonStyle())
-                .disabled(network.snapshot.ssid?.isEmpty != false)
-            }
-
-            labeledField(
-                title: l10n.t("settings.ip"),
-                placeholder: l10n.t("settings.ipPlaceholder"),
-                text: $ipText
-            ) {
-                Button(l10n.t("settings.fillIP")) {
-                    if let ip = network.snapshot.localIPv4s.first,
-                       let prefix = Self.suggestedPrefix(from: ip) {
-                        ipText = mergeUnique(ipText, adding: prefix)
-                    }
-                }
-                .buttonStyle(GhostButtonStyle())
-                .disabled(network.snapshot.localIPv4s.isEmpty)
-            }
-
-            HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "network")
-                    .foregroundStyle(TimeGoTheme.accent)
-                Text(currentNetworkLine)
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(TimeGoTheme.secondary)
-                    .textSelection(.enabled)
-            }
-            .padding(10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(TimeGoTheme.accentSoft, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-            Text(l10n.t("settings.networkFooter"))
-                .font(.system(.caption2, design: .rounded))
-                .foregroundStyle(TimeGoTheme.secondary)
-        }
-    }
-
     private var footer: some View {
         HStack(spacing: 10) {
             Button(l10n.t("common.close")) { onClose?() }
@@ -424,47 +332,19 @@ struct SettingsView: View {
         }
     }
 
-    private var locationStatusColor: Color {
-        switch location.authState {
-        case .authorized: return TimeGoTheme.accent
-        case .denied, .restricted: return .red
-        case .notDetermined, .unknown: return TimeGoTheme.overtime
-        }
-    }
-
     private func requestNotifications() async {
         isRequestingNotify = true
         defer { isRequestingNotify = false }
         _ = await notifications.requestAuthorization(forcePrompt: true)
     }
 
-    private func requestLocation() async {
-        isRequestingLocation = true
-        defer { isRequestingLocation = false }
-        _ = await location.requestAuthorization()
-        network.refreshNow()
-    }
-
-    private var currentNetworkLine: String {
-        let ssid = network.snapshot.ssid ?? l10n.t("net.unknownSSID")
-        let ips = network.snapshot.localIPv4s.joined(separator: ", ")
-        let ipPart = ips.isEmpty ? l10n.t("net.noIPShort") : ips
-        let match = network.matchesCompanyNetwork(settings: store.settings)
-            ? l10n.t("net.matchedShort")
-            : l10n.t("net.unmatchedShort")
-        return l10n.t("net.currentLine", ssid, ipPart, match)
-    }
-
     private func load() {
         let s = store.settings
         workHours = s.workHours
         lunchHours = s.lunchHours
-        ssidText = s.companySSIDs.joined(separator: ", ")
-        ipText = s.companyIPPrefixes.joined(separator: ", ")
         notifyWhenDone = s.notifyWhenDone
         notifyEarlyReminder = s.notifyEarlyReminder
         earlyReminderMinutes = s.clampedEarlyReminderMinutes
-        requireCompanyNetworkForWake = s.requireCompanyNetworkForWake
         launchAtLoginEnabled = s.launchAtLogin
         language = s.language
         oaURLText = s.companyOAURL
@@ -476,12 +356,9 @@ struct SettingsView: View {
         store.updateSettings { s in
             s.workHours = max(0.5, min(24, workHours))
             s.lunchHours = max(0, min(8, lunchHours))
-            s.companySSIDs = Self.splitList(ssidText)
-            s.companyIPPrefixes = Self.splitList(ipText)
             s.notifyWhenDone = notifyWhenDone
             s.notifyEarlyReminder = notifyEarlyReminder
             s.earlyReminderMinutes = min(120, max(1, earlyReminderMinutes))
-            s.requireCompanyNetworkForWake = requireCompanyNetworkForWake
             s.launchAtLogin = launchAtLoginEnabled
             s.language = language
             s.companyOAURL = oaURLText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -505,29 +382,7 @@ struct SettingsView: View {
         store.updateSettings { $0.language = preference }
         l10n.apply(preference)
         launchAtLogin.refresh()
-        network.refreshNow()
         SettingsPanelController.shared.updateTitle()
         SettingsPanelController.shared.bringToFront()
-    }
-
-    private func mergeUnique(_ existing: String, adding value: String) -> String {
-        var items = Self.splitList(existing)
-        if !items.contains(where: { $0.caseInsensitiveCompare(value) == .orderedSame }) {
-            items.append(value)
-        }
-        return items.joined(separator: ", ")
-    }
-
-    private static func splitList(_ text: String) -> [String] {
-        text
-            .split(whereSeparator: { $0 == "," || $0 == "\n" || $0 == ";" })
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-    }
-
-    private static func suggestedPrefix(from ip: String) -> String? {
-        let parts = ip.split(separator: ".")
-        guard parts.count == 4 else { return nil }
-        return parts.prefix(3).joined(separator: ".") + "."
     }
 }

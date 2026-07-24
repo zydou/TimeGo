@@ -9,20 +9,18 @@ final class SettingsPanelController: NSObject, NSWindowDelegate {
 
     private var panel: NSPanel?
     private var store: SessionStore?
-    private var network: NetworkMonitor?
 
-    func configure(store: SessionStore, network: NetworkMonitor) {
+    func configure(store: SessionStore) {
         self.store = store
-        self.network = network
     }
 
     func show() {
-        guard let store, let network else { return }
+        guard let store else { return }
 
         L10n.shared.apply(store.settings.language)
 
         if panel == nil {
-            panel = makePanel(store: store, network: network)
+            panel = makePanel(store: store)
         }
         updateTitle()
 
@@ -84,18 +82,17 @@ final class SettingsPanelController: NSObject, NSWindowDelegate {
         panel.setFrame(frame, display: true)
     }
 
-    private func makePanel(store: SessionStore, network: NetworkMonitor) -> NSPanel {
+    private func makePanel(store: SessionStore) -> NSPanel {
         let root = SettingsView(onClose: { [weak self] in
             self?.close()
         })
         .environmentObject(store)
-        .environmentObject(network)
         .environmentObject(L10n.shared)
 
         let hosting = NSHostingController(rootView: root)
 
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 680),
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 600),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
@@ -106,7 +103,7 @@ final class SettingsPanelController: NSObject, NSWindowDelegate {
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
         panel.delegate = self
-        panel.minSize = NSSize(width: 380, height: 520)
+        panel.minSize = NSSize(width: 380, height: 480)
         panel.titlebarAppearsTransparent = true
         panel.backgroundColor = NSColor(calibratedRed: 0.95, green: 0.96, blue: 0.94, alpha: 1)
         // Do not use frame autosave — a previous near-menu-bar position would
