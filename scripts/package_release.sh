@@ -9,7 +9,13 @@ CONFIGURATION="${CONFIGURATION:-Release}"
 SCHEME="TimeGo"
 PROJECT="TimeGo.xcodeproj"
 DERIVED="${ROOT}/build/release"
-VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' TimeGo/Info.plist 2>/dev/null || echo "1.0.0")"
+# CI 下优先取 GITHUB_REF_NAME（如 "v2.1.0"），strip "v" 前缀；
+# 本地运行回退到 Info.plist 中的版本号。
+if [[ -n "${GITHUB_REF_NAME:-}" ]]; then
+  VERSION="${GITHUB_REF_NAME#v}"
+else
+  VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' TimeGo/Info.plist 2>/dev/null || echo "1.0.0")"
+fi
 OUT_DIR="${ROOT}/dist"
 ZIP_NAME="TimeGo-${VERSION}.zip"
 
