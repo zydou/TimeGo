@@ -110,8 +110,15 @@ struct WorkSession: Codable, Equatable {
     var notifiedAtTarget: Bool = false
     var notifiedEarly: Bool = false
 
+    /// The "business day" rolls over at this hour (06:00), so overnight
+    /// overtime before 6 AM is still counted as the same work session.
+    /// Analogous to Japan's 30-hour system.
+    static let dayBoundaryHour = 6
+
     static func dayKey(for date: Date, calendar: Calendar = .current) -> String {
-        let comps = calendar.dateComponents([.year, .month, .day], from: date)
+        // Shift the date so the day boundary is at dayBoundaryHour instead of midnight.
+        let shifted = date.addingTimeInterval(-TimeInterval(dayBoundaryHour * 3600))
+        let comps = calendar.dateComponents([.year, .month, .day], from: shifted)
         let year = comps.year ?? 0
         let month = comps.month ?? 0
         let day = comps.day ?? 0

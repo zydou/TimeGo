@@ -134,13 +134,13 @@ final class SessionStore: ObservableObject, @unchecked Sendable {
         scheduleNextDayBoundary()
     }
 
-    /// Fires once near 00:00:01, then reschedules.
+    /// Fires once near 06:00:01 (day boundary), then reschedules.
     private func scheduleNextDayBoundary() {
         dayBoundaryTimer?.invalidate()
         let cal = Calendar.current
         guard let next = cal.nextDate(
             after: Date(),
-            matching: DateComponents(hour: 0, minute: 0, second: 1),
+            matching: DateComponents(hour: WorkSession.dayBoundaryHour, minute: 0, second: 1),
             matchingPolicy: .nextTime
         ) else { return }
         let delay = max(5, next.timeIntervalSinceNow)
@@ -155,7 +155,7 @@ final class SessionStore: ObservableObject, @unchecked Sendable {
         dayBoundaryTimer = timer
     }
 
-    /// Clears yesterday's session after midnight. Does not quit the app.
+    /// Clears the previous day's session after the 06:00 day boundary. Does not quit the app.
     private func reconcileDayBoundary() {
         guard let session else { return }
         if session.dayKey != WorkSession.dayKey(for: .now) {
@@ -164,7 +164,7 @@ final class SessionStore: ObservableObject, @unchecked Sendable {
         }
     }
 
-    /// Re-arm the midnight timer after wake (system may have deferred it).
+    /// Re-arm the day-boundary timer after wake (system may have deferred it).
     func ensureDayBoundaryTimer() {
         scheduleNextDayBoundary()
     }
