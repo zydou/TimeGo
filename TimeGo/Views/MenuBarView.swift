@@ -315,6 +315,15 @@ struct MenuBarView: View {
                     }
                     .buttonStyle(GhostButtonStyle())
                 }
+
+                // Clock-out button
+                SoftDivider()
+                    .padding(.vertical, 4)
+
+                Button(l10n.t("menu.clockOut")) {
+                    store.endSession(at: .now, source: .manual)
+                }
+                .buttonStyle(PrimaryButtonStyle(tint: TimeGoTheme.overtime))
             } else {
                 Button(l10n.t("menu.startNow")) {
                     store.start(source: .manual)
@@ -341,6 +350,11 @@ struct MenuBarView: View {
         HStack {
             Button(l10n.t("common.settings")) {
                 SettingsPanelController.shared.show()
+            }
+            .buttonStyle(GhostButtonStyle())
+
+            Button(l10n.t("menu.statistics")) {
+                HistoryPanelController.shared.show()
             }
             .buttonStyle(GhostButtonStyle())
 

@@ -12,6 +12,12 @@ final class SessionStore: ObservableObject, @unchecked Sendable {
 
     static let sessionKey = "work.session"
 
+    /// Session from a previous day that was cleared during init, waiting to be archived.
+    private(set) var clearedYesterdaySession: WorkSession?
+
+    /// Called when a session from a previous day is about to be discarded.
+    var onArchiveSession: ((WorkSession) -> Void)?
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         if let data = defaults.data(forKey: AppSettings.storageKey),
@@ -24,6 +30,10 @@ final class SessionStore: ObservableObject, @unchecked Sendable {
         if let data = defaults.data(forKey: Self.sessionKey),
            let decoded = try? decoder.decode(WorkSession.self, from: data) {
             session = decoded
+            // Capture stale session before reconcileDayBoundary clears it
+            if session?.dayKey != WorkSession.dayKey(for: .now) {
+                clearedYesterdaySession = session
+            }
         }
 
         reconcileDayBoundary()
@@ -107,6 +117,17 @@ final class SessionStore: ObservableObject, @unchecked Sendable {
         persistSession()
     }
 
+    /// Record the end of the current session. Always overwrites any previous endTime.
+    @discardableResult
+    func endSession(at date: Date = .now, source: ClockOutSource) -> Bool {
+        guard var current = session, current.dayKey == WorkSession.dayKey(for: date) else { return false }
+        current.endTime = date
+        current.clockOutSource = source
+        session = current
+        persistSession()
+        return true
+    }
+
     func markNotifiedAtTarget() {
         guard var current = session, current.dayKey == WorkSession.dayKey(for: .now) else { return }
         current.notifiedAtTarget = true
@@ -155,13 +176,14 @@ final class SessionStore: ObservableObject, @unchecked Sendable {
         dayBoundaryTimer = timer
     }
 
-    /// Clears the previous day's session after the 06:00 day boundary. Does not quit the app.
+    /// Archives the previous day's session (if any) and clears it after the 06:00 day boundary.
     private func reconcileDayBoundary() {
-        guard let session else { return }
-        if session.dayKey != WorkSession.dayKey(for: .now) {
-            self.session = nil
-            persistSession()
-        }
+        guard let session, session.dayKey != WorkSession.dayKey(for: .now) else { return }
+        // Notify the observer (e.g. AppRuntime) to archive this session before discarding it.
+        onArchiveSession?(session)
+        clearedYesterdaySession = nil
+        self.session = nil
+        persistSession()
     }
 
     /// Re-arm the day-boundary timer after wake (system may have deferred it).

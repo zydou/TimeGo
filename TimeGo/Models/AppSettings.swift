@@ -103,12 +103,20 @@ enum ClockInSource: String, Codable {
     case wake
 }
 
+enum ClockOutSource: String, Codable {
+    case lock
+    case sleep
+    case manual
+}
+
 struct WorkSession: Codable, Equatable {
     var dayKey: String
     var startTime: Date
     var source: ClockInSource
     var notifiedAtTarget: Bool = false
     var notifiedEarly: Bool = false
+    var endTime: Date?
+    var clockOutSource: ClockOutSource?
 
     /// The "business day" rolls over at this hour (06:00), so overnight
     /// overtime before 6 AM is still counted as the same work session.
@@ -132,13 +140,17 @@ struct WorkSession: Codable, Equatable {
         startTime: Date,
         source: ClockInSource,
         notifiedAtTarget: Bool = false,
-        notifiedEarly: Bool = false
+        notifiedEarly: Bool = false,
+        endTime: Date? = nil,
+        clockOutSource: ClockOutSource? = nil
     ) {
         self.dayKey = dayKey
         self.startTime = startTime
         self.source = source
         self.notifiedAtTarget = notifiedAtTarget
         self.notifiedEarly = notifiedEarly
+        self.endTime = endTime
+        self.clockOutSource = clockOutSource
     }
 
     init(from decoder: Decoder) throws {
@@ -148,5 +160,7 @@ struct WorkSession: Codable, Equatable {
         source = try c.decode(ClockInSource.self, forKey: .source)
         notifiedAtTarget = try c.decodeIfPresent(Bool.self, forKey: .notifiedAtTarget) ?? false
         notifiedEarly = try c.decodeIfPresent(Bool.self, forKey: .notifiedEarly) ?? false
+        endTime = try c.decodeIfPresent(Date.self, forKey: .endTime)
+        clockOutSource = try c.decodeIfPresent(ClockOutSource.self, forKey: .clockOutSource)
     }
 }

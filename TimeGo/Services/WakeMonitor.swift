@@ -3,12 +3,15 @@ import AppKit
 enum PresenceEvent: Sendable {
     case wake
     case unlock
+    case lock
+    case sleep
 }
 
 @MainActor
 final class WakeMonitor {
     private var observers: [NSObjectProtocol] = []
     var onEvent: ((PresenceEvent) -> Void)?
+    var onAbsence: ((PresenceEvent) -> Void)?
 
     func start() {
         stop()
@@ -35,6 +38,30 @@ final class WakeMonitor {
             ) { _ in
                 Task { @MainActor [weak self] in
                     self?.onEvent?(.unlock)
+                }
+            }
+        )
+
+        observers.append(
+            distributed.addObserver(
+                forName: Notification.Name("com.apple.screenIsLocked"),
+                object: nil,
+                queue: .main
+            ) { _ in
+                Task { @MainActor [weak self] in
+                    self?.onAbsence?(.lock)
+                }
+            }
+        )
+
+        observers.append(
+            center.addObserver(
+                forName: NSWorkspace.willSleepNotification,
+                object: nil,
+                queue: .main
+            ) { _ in
+                Task { @MainActor [weak self] in
+                    self?.onAbsence?(.sleep)
                 }
             }
         )

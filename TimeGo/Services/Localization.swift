@@ -138,6 +138,8 @@ final class L10n: ObservableObject {
         "menu.source.unlock": "解锁自动开始",
         "menu.source.wake": "唤醒自动开始",
         "menu.openOA": "打开考勤",
+        "menu.clockOut": "下班打卡",
+        "menu.statistics": "统计",
 
         "settings.subtitle": "通用、语言、工时、OA 与通知",
         "settings.general": "通用",
@@ -162,6 +164,18 @@ final class L10n: ObservableObject {
         "settings.notifyEarlyToggle": "下班前提前提醒",
         "settings.notifyEarlyMinutes": "提前多久",
         "settings.panelTitle": "TimeGo 设置",
+
+        "history.title": "工时统计",
+        "history.allMonths": "全部月份",
+        "history.empty": "暂无历史记录",
+        "history.emptyHint": "每天 6:00 自动归档前一天的工时记录。",
+        "history.summary": "共 %@ 天 · 日均 %@ · 累计加班 %@",
+        "history.date": "日期",
+        "history.clockIn": "上班",
+        "history.clockOut": "下班",
+        "history.duration": "工时",
+        "history.target": "目标",
+        "history.overtime": "加班",
     ]
 
     private static let en: [String: String] = [
@@ -241,6 +255,8 @@ final class L10n: ObservableObject {
         "menu.source.unlock": "Started on unlock",
         "menu.source.wake": "Started on wake",
         "menu.openOA": "Open OA",
+        "menu.clockOut": "Clock Out",
+        "menu.statistics": "Statistics",
 
         "settings.subtitle": "General, language, hours, OA & notifications",
         "settings.general": "General",
@@ -265,5 +281,17 @@ final class L10n: ObservableObject {
         "settings.notifyEarlyToggle": "Remind me before leave time",
         "settings.notifyEarlyMinutes": "Minutes early",
         "settings.panelTitle": "TimeGo Settings",
+
+        "history.title": "Work Hours",
+        "history.allMonths": "All months",
+        "history.empty": "No history yet",
+        "history.emptyHint": "Records are archived daily at 6:00 AM.",
+        "history.summary": "%@ days · avg %@ · total OT %@",
+        "history.date": "Date",
+        "history.clockIn": "In",
+        "history.clockOut": "Out",
+        "history.duration": "Duration",
+        "history.target": "Target",
+        "history.overtime": "Overtime",
     ]
 }

@@ -33,6 +33,7 @@ struct TimeGoApp: App {
 final class AppRuntime: ObservableObject {
     private let store: SessionStore
     private let wake: WakeMonitor
+    private let historyStore = HistoryStore()
     private var notificationTask: Task<Void, Never>?
     /// Blocks session-publisher resync while markNotified* is writing flags.
     private var isMutatingNotifyFlags = false
@@ -45,7 +46,28 @@ final class AppRuntime: ObservableObject {
 
     private func start() async {
         SettingsPanelController.shared.configure(store: store)
+        HistoryPanelController.shared.configure(store: store, historyStore: historyStore)
+
         L10n.shared.apply(store.settings.language)
+
+        // Archive any stale session that was cleared during init (before callback was set).
+        if let stale = store.clearedYesterdaySession {
+            historyStore.archive(
+                session: stale,
+                workHours: store.settings.workHours,
+                lunchHours: store.settings.lunchHours
+            )
+        }
+
+        // Archive on day boundary.
+        store.onArchiveSession = { [weak self] session in
+            guard let self else { return }
+            self.historyStore.archive(
+                session: session,
+                workHours: self.store.settings.workHours,
+                lunchHours: self.store.settings.lunchHours
+            )
+        }
 
         // Install a stable ~/Applications copy first, then repair login items that may
         // still point at a deleted Xcode DerivedData path (app appears not to launch).
@@ -62,6 +84,14 @@ final class AppRuntime: ObservableObject {
             self?.handlePresence(event)
             self?.checkMissedNotifications()
         }
+
+        // Record endTime on lock/sleep
+        wake.onAbsence = { [weak self] event in
+            guard let self else { return }
+            let source: ClockOutSource = (event == .lock) ? .lock : .sleep
+            self.store.endSession(at: .now, source: source)
+        }
+
         wake.start()
 
         // Resync notifications when session changes
@@ -74,6 +104,7 @@ final class AppRuntime: ObservableObject {
     }
 
     private func handlePresence(_ event: PresenceEvent) {
+        // Do NOT clear endTime — the last lock of the day is the definitive endTime.
         guard !store.hasSessionToday else { return }
         let source: ClockInSource = (event == .wake) ? .wake : .unlock
         store.start(source: source)
